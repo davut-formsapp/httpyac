@@ -323,4 +323,81 @@ describe('transformToJunit', () => {
     `.trim()
     );
   });
+
+  it('should output response in system-out', () => {
+    const result = transformToJunit({
+      _meta: {
+        version: 'test',
+      },
+      requests: [
+        {
+          fileName: 'test.http',
+          name: 'test',
+          duration: 1001,
+          response: {
+            protocol: 'http',
+            statusCode: 200,
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+            },
+            body: Buffer.from(JSON.stringify({ 
+              ok: true 
+            }, null, 2), 'utf-8')
+          },
+          summary: {
+            totalTests: 1,
+            successTests: 1,
+            failedTests: 0,
+            erroredTests: 0,
+            skippedTests: 0,
+          },
+          testResults: [
+            {
+              status: TestResultStatus.SUCCESS,
+              message: 'status == 200',
+            },
+          ],
+        },
+      ],
+      summary: {
+        totalRequests: 1,
+        successRequests: 1,
+        skippedRequests: 0,
+        erroredRequests: 0,
+        failedRequests: 0,
+        totalTests: 1,
+        successTests: 1,
+        failedTests: 0,
+        erroredTests: 0,
+        skippedTests: 0,
+      },
+    });
+
+    process.stdout.write(result);
+    expect(result).toBe(
+      `
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="httpyac" tests="1" errors="0" disabled="0" failures="0" time="1.001">
+  <testsuite name="test" tests="1" errors="0" failures="0" skipped="0" package="test.http" time="1.001">
+    <properties>
+      <property name="file" value="test.http"/>
+    </properties>
+    <testcase name="status == 200" classname="test" time="1.001" assertions="1">
+      <system-out><![CDATA[
+[[PROPERTY|responseHeaders]]
+{
+  "content-type": "application/json; charset=utf-8"
+}
+
+[[PROPERTY|responseBody]]
+{
+  "ok": true
+}
+  ]]></system-out>
+    </testcase>
+  </testsuite>
+</testsuites>
+    `.trim()
+    );
+  });
 });

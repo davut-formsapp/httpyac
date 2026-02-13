@@ -1,7 +1,7 @@
 import { DOMImplementation, Document, Element } from '@xmldom/xmldom';
 import { EOL } from 'os';
 import { formatXml } from 'xmldom-format';
-import { TestResult, TestResultStatus } from '../../models';
+import { HttpResponse, TestResult, TestResultStatus } from '../../models';
 import * as utils from '../../utils';
 import { SendJsonOutput, SendOutputRequest } from './jsonOutput';
 
@@ -65,9 +65,9 @@ function transformRequest(document: Document, request: SendOutputRequest) {
       requestDurationMillis / (request.testResults.length === 0 ? 1 : request.testResults.length);
     for (const testResult of request.testResults) {
       const child = transformTestResultToTestcase(document, testResult, {
-        classname: request.name,
-        time: toFloatSeconds(testCaseDurationMillis),
-      });
+          classname: request.name,
+          time: toFloatSeconds(testCaseDurationMillis),
+        }, request.response);
       testSuiteNode.appendChild(child);
     }
   }
@@ -77,7 +77,8 @@ function transformRequest(document: Document, request: SendOutputRequest) {
 function transformTestResultToTestcase(
   document: Document,
   testResult: TestResult,
-  attributes: Record<string, string | number>
+  attributes: Record<string, string | number>,  
+  response?: HttpResponse
 ) {
   const root = document.createElement('testcase');
   setAttribute(root, 'name', testResult.message);
@@ -110,7 +111,27 @@ function transformTestResultToTestcase(
     root.appendChild(document.createElement('skipped'));
   }
 
+  if (response) {
+    root.appendChild(createSystemOutNode(document, response));
+  }  
+
   return root;
+}
+
+function createSystemOutNode(document: Document, response: HttpResponse) {
+  const systemOutNode = document.createElement('system-out');
+  const responseHeaders = utils.stringifySafe(response.headers, 2);
+  const responseBody = utils.toString(response.body);
+  const cdataContent = `
+[[PROPERTY|responseHeaders]]
+${responseHeaders}
+
+[[PROPERTY|responseBody]]
+${responseBody}
+  `;
+
+  systemOutNode.appendChild(document.createCDATASection(cdataContent));
+  return systemOutNode;
 }
 
 function transformToProperties(document: Document, properties: Record<string, string | number | undefined>) {
